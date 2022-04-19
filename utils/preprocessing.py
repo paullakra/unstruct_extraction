@@ -1,8 +1,45 @@
 import re
 import docx as python_docx
 import fitz
+import os
 
 from bs4 import BeautifulSoup
+
+
+def preprocessing_manager(path):
+    try:
+        file_extension = identify_file_type(path)
+        # text = exec("{}.delay('{}')".format(file_extension, file_path))
+        if file_extension == "txt":
+            response = txt(path)
+        elif file_extension == "pdf":
+            response = pdf(path)
+        elif file_extension == "doc":
+            response = doc(path)
+        elif file_extension == "docx":
+            response = docx(path)
+        else:
+            response = TypeError("Unsupported file type {}".format(file_extension))
+
+    except Exception as e:
+        response = str(e)
+
+    return preprocess_string(response)
+
+
+def identify_file_type(file_path: str):
+    # Function to identify type of file
+    try:
+        if os.path.isdir(file_path):
+            return "directory"
+        extension = file_path[file_path.rindex(".") + 1:]
+        if extension.isalnum():
+            return extension
+        else:
+            return "unknown"
+
+    except ValueError as e:
+        return e
 
 
 def preprocess_string(text: str):
@@ -10,10 +47,10 @@ def preprocess_string(text: str):
     # text = text.lower()
     text = re.sub('\r', ' ', text)
     text = re.sub('\n', ' ', text)
-    text = re.sub('-', '', text)
-    text = re.sub(r"[^a-zA-Z0-9.,()+@$ ]", " ", text)
+    # text = re.sub('-', '', text)
+    text = re.sub(r"[^a-zA-Z0-9.,()+@$\' ]", " ", text)
     text = re.sub(' +', ' ', text)
-    text.strip()
+    text = text.strip()
     return text
 
 
@@ -66,6 +103,6 @@ if __name__ == "__main__":
               "the United States, high-purity stevia glycoside extracts have been generally recognized as safe "
               "since 2008, and are allowed in food products, but stevia leaf and crude extracts do not have "
               "Food and Drug Administration (FDA) $$$ approval for use in food. The European Union approved Stevia "
-              "additives in 2011, while in Japan, stevia has been widely used as a sweetener for decades.")
+              "additives in 2011, while in Japan's era, stevia has been widely used as a sweetener for decades.")
     Source = Source.encode().decode()
     print(preprocess_string(Source))

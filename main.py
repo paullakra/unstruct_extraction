@@ -1,6 +1,6 @@
 import uvicorn
 
-from api.ultimate import app
+from api import app
 
 if __name__ == "__main__":
     # Run uvicorn server from inside docker

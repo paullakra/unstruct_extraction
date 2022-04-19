@@ -1,12 +1,13 @@
-import requests
-from fastapi import FastAPI, UploadFile, File
-from fastapi.responses import JSONResponse, PlainTextResponse
 import os
 import shutil
 from urllib.request import Request, urlopen
+
 import uvicorn
 from bs4 import BeautifulSoup
+from fastapi import FastAPI, UploadFile, File
+from fastapi.responses import JSONResponse, PlainTextResponse
 
+from utils import preprocessing_manager, summarise_long_text, get_entities, get_email_address, get_phone_number
 
 app = FastAPI()
 
@@ -17,7 +18,7 @@ async def root():
 
 
 @app.post("/file")
-async def file_input(file: UploadFile = File(...)):
+async def file_input(file: UploadFile = File(...), summary_mode: str = "separative"):
     try:
         # Save a local copy of file
         with open(f'{file.filename}', 'wb') as buffer:
@@ -26,12 +27,15 @@ async def file_input(file: UploadFile = File(...)):
         file_path = file_path.replace("\\", "/")
 
         # Send path of local copy to preprocessing module to get content
-        text = requests.post(url="http://localhost:7000/path", json={"text": file_path}).text
+        text = preprocessing_manager(file_path)
         # Send text to model module for results
-        summary = requests.post(url="http://localhost:5000/input", json={"text": text}).text
+        summary = summarise_long_text(text, mode=summary_mode)
+        phones = get_phone_number(text)
+        emails = get_email_address(text)
+        entities = get_entities(text)
         # Save response to send as api response
         response = JSONResponse(status_code=202, content=dict(
-            Summary=summary))
+            Summary=summary, Phone=phones, Email=emails, Entites=entities))
         # Remove local copy of file
         os.remove(file_path)
 
@@ -56,12 +60,16 @@ async def url_input(url: str):
             f.write(line)
         f.close()
 
-        # Send path of local file to get content
-        text = requests.post(url="http://127.0.0.1:7000/path", json={"text": file_path}).text
-        # Send text to model api to get result
-        summary = requests.post(url="http://127.0.0.1:5000/input", json={"text": text}).text
+        # Send path of local copy to preprocessing module to get content
+        text = preprocessing_manager(file_path)
+        # Send text to model module for results
+        summary = summarise_long_text(text)
+        phones = get_phone_number(text)
+        emails = get_email_address(text)
+        entities = get_entities(text)
+        # Save response to send as api response
         response = JSONResponse(status_code=202, content=dict(
-            Summary=summary))
+            Summary=summary, Phone=phones, Email=emails, Entites=entities))
         os.remove(file_path)
 
     except RuntimeError as e:
